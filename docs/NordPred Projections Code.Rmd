@@ -1,0 +1,1336 @@
+---
+title: "NordPred Clean Code"
+author: "Jack Murphy"
+date: '2022-12-20'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r setup}
+# Set working directory
+# getwd() #Check what current working directory is
+setwd("~/im_modelling_proj")
+
+library(tidyverse) # Data wrangling
+source("~/im_modelling_proj/R/nordpred.s") # NordPred
+
+```
+
+```{r echo=FALSE}
+ ## Check ##
+# Use 3 observed periods to predict the latest 2 observed periods to see if they are accurate
+
+# Non-Hispanic White
+NP_cases_nhw_practice <- SEER_18age_5year_cases_NP %>% filter(race_eth == "Non-Hisp White") %>% select(yr93.97:yr03.07)
+
+NP_pop_nhw_practice <- NP_pops_nhw %>%  select(yr93.97:yr13.17)
+
+NP_est_practice_nhw <- nordpred.estimate(
+  cases=NP_cases_nhw_practice,
+  pyr=NP_pop_nhw_practice,
+  noperiod=3,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_practice_nhw <- nordpred.prediction(
+  NP_est_practice_nhw,
+  startuseage = 9,
+  recent = TRUE
+)
+
+NP_pred_num_practice_nhw <- nordpred.getpred(
+  NP_pred_practice_nhw,
+  incidence = TRUE,
+  standpop = NULL,
+  excludeobs = FALSE,
+  byage = TRUE,
+  agegroups = c(1:18)
+)
+
+write_csv(x = NP_pred_num_practice_nhw, file = "Non-Hisp White NordPred PRACTICE.csv")
+
+```
+
+```{r echo=FALSE}
+
+# Read in Data
+setwd("~/im_modelling_proj/data")
+# Population - combined SEER and Census, 2000-2034
+pop_dat_all <- read_csv(file = "SEER Census Combined Incidence Population 230418.csv")
+
+# Cases from SEER (Incidence)
+
+incidence_dat <- read_csv(file = "SEER Incidence Cases WIDE 230418.csv")
+
+
+```
+
+
+```{r echo=FALSE}
+
+                  #################################
+                  #                               #
+                  #     INCIDENCE PROJECTIONS     #
+                  #                               #
+                  #################################
+
+# Non-Hispanic White, Non-cardia adenocarcinoma
+
+  # Create subsetted population data for NHW, non-cardia adenocarcinoma
+  NP_pop_NHW_nc_ade <- pop_dat_all %>%
+    filter(raceth == "NHW", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHW, non-cardia adenocarcinoma
+
+  NP_cases_NHW_nc_ade <- incidence_dat %>%
+  filter(raceth == "NHW", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  select(yr00_04:yr15_19)
+
+NP_est_NHW <- nordpred.estimate(
+  cases=NP_cases_NHW_nc_ade,
+  pyr=NP_pop_NHW_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_NHW <- nordpred.prediction(
+  NP_est_NHW,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+
+# Results - Rates
+  NP_pred_rates_NHW <- nordpred.getpred(
+    NP_pred_NHW,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_pred_counts_NHW <- nordpred.getpred(
+    NP_pred_NHW,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# Output CSV files
+  write_csv(x = NP_pred_rates_NHW, file = "Non-Hisp White NordPred Rates 230418.csv")
+  
+  # For calculating <40 incidence rates
+    write_csv(x = NP_pop_NHW_nc_ade, file = "Non-Hisp White NordPred Population Counts 230418.csv")
+    write_csv(x = NP_pred_counts_NHW, file = "Non-Hisp White NordPred Counts 230418.csv")
+
+    
+# Non-Hispanic Black, Non-cardia adenocarcinoma
+
+  # Create subsetted population data for NHB, non-cardia adenocarcinoma
+  NP_pop_NHB_nc_ade <- pop_dat_all %>%
+    filter(raceth == "NHB", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHB, non-cardia adenocarcinoma
+
+  NP_cases_NHB_nc_ade <- incidence_dat %>%
+  filter(raceth == "NHB", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  select(yr00_04:yr15_19)
+
+NP_est_NHB <- nordpred.estimate(
+  cases=NP_cases_NHB_nc_ade,
+  pyr=NP_pop_NHB_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_NHB <- nordpred.prediction(
+  NP_est_NHB,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+# Results - Rates
+  NP_pred_rates_NHB <- nordpred.getpred(
+    NP_pred_NHB,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# Results - Counts
+  NP_pred_counts_NHB <- nordpred.getpred(
+    NP_pred_NHB,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# Output CSV files
+  write_csv(x = NP_pred_rates_NHB, file = "Non-Hisp Black NordPred Rates 230418.csv")
+  
+  # For calculating <40 incidence rates
+    write_csv(x = NP_pop_NHB_nc_ade, file = "Non-Hisp Black NordPred Population Counts 230418.csv")
+    write_csv(x = NP_pred_counts_NHB, file = "Non-Hisp Black NordPred Counts 230418.csv")
+
+
+# Non-Hispanic American Indian/Alaskan Native, Non-cardia adenocarcinoma
+
+  # Create subsetted population data for NHAIAN, non-cardia adenocarcinoma
+    NP_pop_NHAIAN_nc_ade <- pop_dat_all %>%
+      filter(raceth == "NHAIAN", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+      select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHAIAN, non-cardia adenocarcinoma
+
+    NP_cases_NHAIAN_nc_ade <- incidence_dat %>%
+    filter(raceth == "NHAIAN", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+    replace (is.na(.), 0.5)  %>% # Replace NAs with 0.5
+    select(yr00_04:yr15_19)
+    
+
+NP_est_NHAIAN <- nordpred.estimate(
+  cases=NP_cases_NHAIAN_nc_ade,
+  pyr=NP_pop_NHAIAN_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_NHAIAN <- nordpred.prediction(
+  NP_est_NHAIAN,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+# Results - Rates
+  NP_pred_rates_NHAIAN <- nordpred.getpred(
+    NP_pred_NHAIAN,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# Results - Counts
+  NP_pred_counts_NHAIAN <- nordpred.getpred(
+    NP_pred_NHAIAN,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# Output CSV files
+  write_csv(x = NP_pred_rates_NHAIAN, file = "Non-Hisp American Indian_Alaskan Native NordPred Rates 230418.csv")
+  
+  # For calculating <40 incidence rates
+    write_csv(x = NP_pop_NHAIAN_nc_ade, file = "Non-Hisp American Indian_Alaskan Native NordPred Population Counts 230418.csv")
+    write_csv(x = NP_pred_counts_NHAIAN, file = "Non-Hisp American Indian_Alaskan Native NordPred Counts 230418.csv")
+
+
+# Non-Hispanic Asian-American_Pacific Islander, Non-cardia adenocarcinoma
+
+  # Create subsetted population data for NHAAPI, non-cardia adenocarcinoma
+  NP_pop_NHAAPI_nc_ade <- pop_dat_all %>%
+    filter(raceth == "NHAAPI", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHAAPI, non-cardia adenocarcinoma
+
+  NP_cases_NHAAPI_nc_ade <- incidence_dat %>%
+  filter(raceth == "NHAAPI", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  select(yr00_04:yr15_19)
+
+NP_est_NHAAPI <- nordpred.estimate(
+  cases=NP_cases_NHAAPI_nc_ade,
+  pyr=NP_pop_NHAAPI_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_NHAAPI <- nordpred.prediction(
+  NP_est_NHAAPI,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+# Results - Rates
+  NP_pred_rates_NHAAPI <- nordpred.getpred(
+    NP_pred_NHAAPI,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# Results - Counts
+  NP_pred_counts_NHAAPI <- nordpred.getpred(
+    NP_pred_NHAAPI,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# Output CSV files
+  write_csv(x = NP_pred_rates_NHAAPI, file = "Non-Hisp Asian-American_Pacific Islander NordPred Rates 230418.csv")
+  
+  # For calculating <40 incidence rates
+    write_csv(x = NP_pop_NHAAPI_nc_ade, file = "Non-Hisp Asian-American_Pacific Islander NordPred Population Counts 230418.csv")
+    write_csv(x = NP_pred_counts_NHAAPI, file = "Non-Hisp Asian-American_Pacific Islander NordPred Counts 230418.csv")
+
+
+#Hispanic, Non-cardia adenocarcinoma
+
+  # Create subsetted population data for Hispanic, non-cardia adenocarcinoma
+  NP_pop_Hispanic_nc_ade <- pop_dat_all %>%
+    filter(raceth == "Hispanic", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for Hispanic, non-cardia adenocarcinoma
+
+  NP_cases_Hispanic_nc_ade <- incidence_dat %>%
+  filter(raceth == "Hispanic", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  select(yr00_04:yr15_19)
+
+NP_est_Hispanic <- nordpred.estimate(
+  cases=NP_cases_Hispanic_nc_ade,
+  pyr=NP_pop_Hispanic_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_Hispanic <- nordpred.prediction(
+  NP_est_Hispanic,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+# Results - Rates
+  NP_pred_rates_Hispanic <- nordpred.getpred(
+    NP_pred_Hispanic,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# Results - Counts
+  NP_pred_counts_Hispanic <- nordpred.getpred(
+    NP_pred_Hispanic,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# Output CSV files
+  write_csv(x = NP_pred_rates_Hispanic, file = "Hispanic NordPred Rates 230418.csv")
+  
+  # For calculating <40 incidence rates
+    write_csv(x = NP_pop_Hispanic_nc_ade, file = "Hispanic NordPred Population Counts 230418.csv")
+    write_csv(x = NP_pred_counts_Hispanic, file = "Hispanic NordPred Counts 230418.csv")
+
+```
+
+```{r echo=FALSE}
+
+                  ############################################################
+                  #                                                          #
+                  #     MORTALITY PROJECTIONS: NON-CARDIA ADENOCARCINOMA     #
+                  #                                                          #
+                  ############################################################
+
+# Set up data
+  # SEER Mortality counts to be widened
+  # SEER_mortality_all <- read.csv(file = "SEER Mortality for R Code 230418.csv", na.strings = "^")
+  # SEER_mortality_all <- SEER_mortality_all %>% rename(raceth = ï..raceth)
+  # 
+  # # Pivot wider
+  #   # Deaths
+  #     MORTALITY_dat <- SEER_mortality_all %>% select(-population) %>%
+  #       pivot_wider(data = .,
+  #                   names_from = yr_grp,
+  #                   values_from = count)
+  #     
+  #    # Population
+  #     SEER_mortality_pop_WIDE <- SEER_mortality_all %>% select(-count) %>%
+  #       pivot_wider(data = .,
+  #                   names_from = yr_grp,
+  #                   values_from = population)
+  #     
+  #     write_csv(SEER_mortality_pop_WIDE, file = "SEER_mortality_pop_WIDE_230418.csv")
+
+  # Population - combined SEER and Census, 2000-2034
+  pop_dat_mortality_all <- read_csv(file = "SEER Census Combined Mortality Population 230418.csv")
+
+# Non-Hispanic White, Non-cardia adenocarcinoma
+
+  # Create subsetted population data for NHW, non-cardia adenocarcinoma
+  NP_mortality_pop_NHW_nc_ade <- pop_dat_mortality_all %>%
+    filter(raceth == "NHW", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHW, non-cardia adenocarcinoma
+
+  # NP_deaths_NHW_nc_ade <- MORTALITY_dat %>%
+  # filter(raceth == "NHW", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  # select(yr00_04:yr15_19)
+
+# Import data
+  NP_deaths_NHW_nc_ade <- read.csv(file = "NHW NC Adeno NordPred.csv", na.strings = "NA")
+  
+NP_mortality_est_NHW <- nordpred.estimate(
+  cases=NP_deaths_NHW_nc_ade,
+  pyr=NP_mortality_pop_NHW_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_mortality_pred_NHW <- nordpred.prediction(
+  NP_mortality_est_NHW,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+# Results - Rates
+  NP_mortality_pred_rates_NHW <- nordpred.getpred(
+    NP_mortality_pred_NHW,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_mortality_pred_counts_nhw <- nordpred.getpred(
+    NP_mortality_pred_NHW,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# For calculating <40 MORTALITY rates
+  write_csv(x = NP_mortality_pop_NHW_nc_ade, file = "NHW NordPred Mortality Population Counts 230420.csv")
+  write_csv(x = NP_mortality_pred_counts_nhw, file = "NHW NordPred Deaths 20230820.csv")
+
+# Output CSV files
+  write_csv(x = NP_mortality_pred_rates_NHW, file = "NHW NC Adeno NordPred Mortality Rates 20230820.csv")
+  
+
+# Non-Hispanic Black, Non-cardia adenocarcinoma
+
+  # Create subsetted population data for NHB, non-cardia adenocarcinoma
+  NP_mortality_NHB_nc_ade <- pop_dat_mortality_all %>%
+    filter(raceth == "NHB", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHB, non-cardia adenocarcinoma
+
+  # NP_deaths_NHB_nc_ade <- MORTALITY_dat %>%
+  # filter(raceth == "NHB", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  # select(yr00_04:yr15_19)
+
+# Import data
+  NP_deaths_NHB_nc_ade <- read.csv(file = "NHB NC Adeno NordPred.csv", na.strings = "NA")
+  
+NP_mortality_est_NHB <- nordpred.estimate(
+  cases=NP_deaths_NHB_nc_ade,
+  pyr=NP_mortality_NHB_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+
+NP_mortality_est_NHW <- nordpred.estimate(
+  cases=NP_deaths_NHW_nc_ade,
+  pyr=NP_pop_NHW_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+
+NP_mortality_pred_NHB <- nordpred.prediction(
+  NP_mortality_est_NHB,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+# Results - Rates
+  NP_mortality_pred_rates_NHB <- nordpred.getpred(
+    NP_mortality_pred_NHB,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_mortality_pred_counts_NHB <- nordpred.getpred(
+    NP_mortality_pred_NHB,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# For calculating <40 MORTALITY rates
+  write_csv(x = NP_mortality_pop_NHB_nc_ade, file = "Non-Hisp Black NordPred Mortality Population Counts 230420.csv")
+  write_csv(x = NP_mortality_pred_counts_NHB, file = "NHB NordPred Deaths 20230820.csv")
+
+# Output CSV files
+  write_csv(x = NP_mortality_pred_rates_NHB, file = "NHB NordPred Mortality Rates 20230820.csv")
+
+
+# Non-Hispanic American Indian_Alaskan Native, Non-cardia adenocarcinoma
+
+  # Create subsetted population data for NHAIAN, non-cardia adenocarcinoma
+  NP_mortality_pop_NHAIAN_nc_ade <- pop_dat_mortality_all %>%
+    filter(raceth == "NHAIAN", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHAIAN, non-cardia adenocarcinoma
+
+  # NP_deaths_NHAIAN_nc_ade <- MORTALITY_dat %>%
+  # filter(raceth == "NHAIAN", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  # replace (is.na(.), 1)  %>% # Replace NAs with 1
+  # select(yr00_04:yr15_19)
+  
+# Import data - Doesn't exist! No observations.
+    NP_deaths_NHAIAN_nc_ade <- read.csv(file = "NHAIAN NC Adeno NordPred.csv", na.strings = "NA")
+
+
+NP_mortality_est_NHAIAN <- nordpred.estimate(
+  cases=NP_deaths_NHAIAN_nc_ade,
+  pyr=NP_mortality_pop_NHAIAN_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_mortality_pred_NHAIAN <- nordpred.prediction(
+  NP_mortality_est_NHAIAN,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+# Results - Rates
+  NP_mortality_pred_rates_NHAIAN <- nordpred.getpred(
+    NP_mortality_pred_NHAIAN,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_mortality_pred_counts_NHAIAN <- nordpred.getpred(
+    NP_mortality_pred_NHAIAN,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# For calculating <40 MORTALITY rates
+  write_csv(x = NP_mortality_pop_NHAIAN_nc_ade, file = "Non-Hisp American Indian_Alaskan Native NordPred Mortality Population Counts 230420.csv")
+  write_csv(x = NP_mortality_pred_counts_NHAIAN, file = "Non-Hisp American Indian_Alaskan Native NordPred Deaths 230420.csv")
+
+# Output CSV files
+  write_csv(x = NP_mortality_pred_rates_NHAIAN, file = "Non-Hisp American Indian_Alaskan Native NordPred Mortality Rates 230420.csv")
+
+
+# Non-Hispanic Asian American_Pacific Islander, Non-cardia adenocarcinoma
+
+  # Create subsetted population data for NHAAPI, non-cardia adenocarcinoma
+  NP_mortality_pop_NHAAPI_nc_ade <- pop_dat_mortality_all %>%
+    filter(raceth == "NHAAPI", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHAAPI, non-cardia adenocarcinoma
+
+  # NP_deaths_NHAAPI_nc_ade <- MORTALITY_dat %>%
+  # filter(raceth == "NHAAPI", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  # select(yr00_04:yr15_19)
+
+# Import data
+    NP_deaths_NHAAPI_nc_ade <- read.csv(file = "NHAAPI NC Adeno NordPred.csv", na.strings = "NA")
+
+  
+NP_mortality_est_NHAAPI <- nordpred.estimate(
+  cases=NP_deaths_NHAAPI_nc_ade,
+  pyr=NP_mortality_pop_NHAAPI_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_mortality_pred_NHAAPI <- nordpred.prediction(
+  NP_mortality_est_NHAAPI,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+# Results - Rates
+  NP_mortality_pred_rates_NHAAPI <- nordpred.getpred(
+    NP_mortality_pred_NHAAPI,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_mortality_pred_counts_NHAAPI <- nordpred.getpred(
+    NP_mortality_pred_NHAAPI,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# For calculating <40 MORTALITY rates
+  write_csv(x = NP_mortality_pop_NHAAPI_nc_ade, file = "NHAAPI NordPred Mortality Population Counts 230420.csv")
+  write_csv(x = NP_mortality_pred_counts_NHAAPI, file = "NHAAPI NordPred Deaths 20230820.csv")
+
+# Output CSV files
+  write_csv(x = NP_mortality_pred_rates_NHAAPI, file = "NHAAPI NordPred Mortality Rates 20230820.csv")
+
+
+# Hispanic, Non-cardia adenocarcinoma
+
+  # Create subsetted population data for Hispanic, non-cardia adenocarcinoma
+  NP_mortality_pop_HISP_nc_ade <- pop_dat_mortality_all %>%
+    filter(raceth == "Hispanic", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for Hispanic, non-cardia adenocarcinoma
+
+  # NP_deaths_Hispanic_nc_ade <- MORTALITY_dat %>%
+  # filter(raceth == "Hispanic", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  # select(yr00_04:yr15_19)
+  
+# Import data
+        NP_deaths_HISP_nc_ade <- read.csv(file = "HISP NC Adeno NordPred.csv", na.strings = "NA")
+
+
+NP_mortality_est_HISP <- nordpred.estimate(
+  cases=NP_deaths_HISP_nc_ade,
+  pyr=NP_mortality_pop_HISP_nc_ade,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_mortality_pred_HISP <- nordpred.prediction(
+  NP_mortality_est_HISP,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+# Results - Rates
+  NP_mortality_pred_rates_HISP <- nordpred.getpred(
+    NP_mortality_pred_HISP,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_mortality_pred_counts_HISP <- nordpred.getpred(
+    NP_mortality_pred_HISP,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# For calculating <40 MORTALITY rates
+  write_csv(x = NP_mortality_pop_HISP_nc_ade, file = "HISP NordPred Mortality Population Counts 230420.csv")
+  write_csv(x = NP_mortality_pred_counts_HISP, file = "HISP NordPred Deaths 20230820.csv")
+
+# Output CSV files
+  write_csv(x = NP_mortality_pred_rates_HISP, file = "HISP NordPred Mortality Rates 20230820.csv")
+
+```
+
+
+```{r}
+                  ######################################
+                  #                                    #
+                  #     MORTALITY PROJECTIONS: ALL     #
+                  #                                    #
+                  ######################################
+
+# Set up data
+  # SEER Mortality counts to be widened
+  # SEER_mortality_all <- read.csv(file = "SEER Mortality for R Code 230418.csv", na.strings = "^")
+  # SEER_mortality_all <- SEER_mortality_all %>% rename(raceth = ï..raceth)
+  # 
+  # # Pivot wider
+  #   # Deaths
+  #     MORTALITY_dat <- SEER_mortality_all %>% select(-population) %>%
+  #       pivot_wider(data = .,
+  #                   names_from = yr_grp,
+  #                   values_from = count)
+  #     
+  #    # Population
+  #     SEER_mortality_pop_WIDE <- SEER_mortality_all %>% select(-count) %>%
+  #       pivot_wider(data = .,
+  #                   names_from = yr_grp,
+  #                   values_from = population)
+  #     
+  #     write_csv(SEER_mortality_pop_WIDE, file = "SEER_mortality_pop_WIDE_230418.csv")
+
+  # Population - combined SEER and Census, 2000-2034
+  pop_dat_mortality_all <- read_csv(file = "SEER Census Combined Mortality Population 230418.csv")
+
+# Non-Hispanic White, All
+
+  # Create subsetted population data for NHW, non-cardia adenocarcinoma
+  NP_mortality_pop_NHW_all <- pop_dat_mortality_all %>%
+    filter(raceth == "NHW", subsite == "All", histo == "All") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHW, non-cardia adenocarcinoma
+
+  # NP_deaths_NHW_nc_ade <- MORTALITY_dat %>%
+  # filter(raceth == "NHW", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  # select(yr00_04:yr15_19)
+
+# Import data
+  NP_deaths_NHW_all <- read.csv(file = "NHW All NordPred.csv", na.strings = "NA")
+  
+NP_mortality_est_NHW_all <- nordpred.estimate(
+  cases=NP_deaths_NHW_all,
+  pyr=NP_mortality_pop_NHW_all,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_mortality_pred_NHW_all <- nordpred.prediction(
+  NP_mortality_est_NHW_all,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+# Results - Rates
+  NP_mortality_pred_rates_NHW_all <- nordpred.getpred(
+    NP_mortality_pred_NHW_all,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_mortality_pred_counts_NHW_all <- nordpred.getpred(
+    NP_mortality_pred_NHW_all,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# For calculating <40 MORTALITY rates
+  write_csv(x = NP_mortality_pop_NHW_nc_ade, file = "NHW NordPred Mortality Population Counts 230420.csv")
+  write_csv(x = NP_mortality_pred_counts_NHW_all, file = "NHW NordPred All Deaths 20230820.csv")
+
+# Output CSV files
+  write_csv(x = NP_mortality_pred_rates_NHW_all, file = "NHW All NordPred Mortality Rates 20230820.csv")
+  
+
+# Non-Hispanic Black, All
+
+  # Create subsetted population data for NHB, non-cardia adenocarcinoma
+  NP_mortality_pop_NHB_all <- pop_dat_mortality_all %>%
+    filter(raceth == "NHB", subsite == "All", histo == "All") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHB, non-cardia adenocarcinoma
+
+  # NP_deaths_NHB_nc_ade <- MORTALITY_dat %>%
+  # filter(raceth == "NHB", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  # select(yr00_04:yr15_19)
+
+# Import data
+  NP_deaths_NHB_all <- read.csv(file = "NHB All NordPred.csv", na.strings = "NA")
+  
+NP_mortality_est_NHB_all <- nordpred.estimate(
+  cases=NP_deaths_NHB_all,
+  pyr=NP_mortality_pop_NHB_all,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_mortality_pred_NHB_all <- nordpred.prediction(
+  NP_mortality_est_NHB_all,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+# Results - Rates
+  NP_mortality_pred_rates_NHB_all <- nordpred.getpred(
+    NP_mortality_pred_NHB_all,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_mortality_pred_counts_NHB_all <- nordpred.getpred(
+    NP_mortality_pred_NHB_all,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# For calculating <40 MORTALITY rates
+  write_csv(x = NP_mortality_pop_NHB_nc_ade, file = "NHB NordPred Mortality Population Counts 230420.csv")
+  write_csv(x = NP_mortality_pred_counts_NHB_all, file = "NHB NordPred All Deaths 20230820.csv")
+
+# Output CSV files
+  write_csv(x = NP_mortality_pred_rates_NHB_all, file = "NHB All NordPred Mortality Rates 20230820.csv")
+  
+
+
+# Non-Hispanic American Indian_Alaskan Native, All
+
+  # Create subsetted population data for NHAIAN, All
+  NP_mortality_pop_NHAIAN_all <- pop_dat_mortality_all %>%
+    filter(raceth == "NHAIAN", subsite == "All", histo == "All") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHAIAN, All
+
+  # NP_deaths_NHAIAN_nc_ade <- MORTALITY_dat %>%
+  # filter(raceth == "NHAIAN", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  # select(yr00_04:yr15_19)
+
+# Import data
+  NP_deaths_NHAIAN_all <- read.csv(file = "NHAIAN All NordPred.csv", na.strings = "NA")
+  
+NP_mortality_est_NHAIAN_all <- nordpred.estimate(
+  cases=NP_deaths_NHAIAN_all,
+  pyr=NP_mortality_pop_NHAIAN_all,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_mortality_pred_NHAIAN_all <- nordpred.prediction(
+  NP_mortality_est_NHAIAN_all,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+# Results - Rates
+  NP_mortality_pred_rates_NHAIAN_all <- nordpred.getpred(
+    NP_mortality_pred_NHAIAN_all,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_mortality_pred_counts_NHAIAN_all <- nordpred.getpred(
+    NP_mortality_pred_NHAIAN_all,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# For calculating <40 MORTALITY rates
+  write_csv(x = NP_mortality_pop_NHAIAN_nc_ade, file = "NHAIAN NordPred Mortality Population Counts 230420.csv")
+  write_csv(x = NP_mortality_pred_counts_NHAIAN_all, file = "NHAIAN NordPred All Deaths 20230820.csv")
+
+# Output CSV files
+  write_csv(x = NP_mortality_pred_rates_NHAIAN_all, file = "NHAIAN All NordPred Mortality Rates 20230820.csv")
+  
+
+
+
+# Non-Hispanic Asian American_Pacific Islander, All
+
+  # Create subsetted population data for NHAAPI, All
+  NP_mortality_pop_NHAAPI_all <- pop_dat_mortality_all %>%
+    filter(raceth == "NHAAPI", subsite == "All", histo == "All") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for NHAAPI, non-cardia adenocarcinoma
+
+  # NP_deaths_NHAAPI_nc_ade <- MORTALITY_dat %>%
+  # filter(raceth == "NHAAPI", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  # select(yr00_04:yr15_19)
+
+# Import data
+  NP_deaths_NHAAPI_all <- read.csv(file = "NHAAPI All NordPred.csv", na.strings = "NA")
+  
+NP_mortality_est_NHAAPI_all <- nordpred.estimate(
+  cases=NP_deaths_NHAAPI_all,
+  pyr=NP_mortality_pop_NHAAPI_all,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_mortality_pred_NHAAPI_all <- nordpred.prediction(
+  NP_mortality_est_NHAAPI_all,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+# Results - Rates
+  NP_mortality_pred_rates_NHAAPI_all <- nordpred.getpred(
+    NP_mortality_pred_NHAAPI_all,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_mortality_pred_counts_NHAAPI_all <- nordpred.getpred(
+    NP_mortality_pred_NHAAPI_all,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# For calculating <40 MORTALITY rates
+  write_csv(x = NP_mortality_pop_NHAAPI_nc_ade, file = "NHAAPI NordPred Mortality Population Counts 230420.csv")
+  write_csv(x = NP_mortality_pred_counts_NHAAPI_all, file = "NHAAPI NordPred All Deaths 20230820.csv")
+
+# Output CSV files
+  write_csv(x = NP_mortality_pred_rates_NHAAPI_all, file = "NHAAPI All NordPred Mortality Rates 20230820.csv")
+
+# Hispanic, All
+
+  # Create subsetted population data for HISP, All
+  NP_mortality_pop_HISP_all <- pop_dat_mortality_all %>%
+    filter(raceth == "Hispanic", subsite == "All", histo == "All") %>%
+    select(yr00_04:yr30_34)
+
+  # Create subsetted data set for HISP, non-cardia adenocarcinoma
+
+  # NP_deaths_HISP_nc_ade <- MORTALITY_dat %>%
+  # filter(raceth == "HISP", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+  # select(yr00_04:yr15_19)
+
+# Import data
+  NP_deaths_HISP_all <- read.csv(file = "HISP All NordPred.csv", na.strings = "NA")
+  
+NP_mortality_est_HISP_all <- nordpred.estimate(
+  cases=NP_deaths_HISP_all,
+  pyr=NP_mortality_pop_HISP_all,
+  noperiod=4,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_mortality_pred_HISP_all <- nordpred.prediction(
+  NP_mortality_est_HISP_all,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+
+# Results - Rates
+  NP_mortality_pred_rates_HISP_all <- nordpred.getpred(
+    NP_mortality_pred_HISP_all,
+    incidence = TRUE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+  
+# Results - Counts
+  NP_mortality_pred_counts_HISP_all <- nordpred.getpred(
+    NP_mortality_pred_HISP_all,
+    incidence = FALSE, # TRUE = rate, FALSE = count
+    standpop = NULL,
+    excludeobs = FALSE,
+    byage = TRUE,
+    agegroups = c(1:18)
+  )
+
+# For calculating <40 MORTALITY rates
+  write_csv(x = NP_mortality_pop_HISP_nc_ade, file = "HISP NordPred Mortality Population Counts 230420.csv")
+  write_csv(x = NP_mortality_pred_counts_HISP_all, file = "HISP NordPred All Deaths 20230820.csv")
+
+# Output CSV files
+  write_csv(x = NP_mortality_pred_rates_HISP_all, file = "HISP All NordPred Mortality Rates 20230820.csv")
+  
+```
+
+
+
+
+```{r echo=FALSE}
+
+## Plot NordPred Projections ##
+
+#NHW
+NP_pred_num_nhw <- read_csv(file = "Non-Hisp White NordPred Output 221226.csv")
+
+NHW_NP_plot <- plot.nordpred(NP_pred_num_nhw),
+     incidence = TRUE,
+     standpop = NULL,
+     agegroups = "all", 
+     startplot = 1, 
+   #  xlab = "",
+  #   ylab = "",
+     main = "",
+     labels = NULL,
+     ylim = NULL, 
+     lty = c(1, 3), 
+     col = c(1, 1),
+     new = TRUE)
+view(NHW_NP_plot)
+warnings()
+
+
+```
+
+```{r echo=FALSE}
+
+### Incidence ###
+
+# Read in data
+
+# Case counts
+inc_cases_raw <- read.csv("SEER Incidence for R Code 230413.csv", na.strings = "^") %>% select(-population)
+inc_cases_raw <- inc_cases_raw %>%
+  rename(raceth = ï..raceth)
+
+inc_cases_wide <- inc_cases_raw %>% # Pivot wider so it's ready for NordPred
+  pivot_wider(names_from = yr_grp,
+              values_from = count)
+
+write_csv(inc_cases_wide, file = "SEER Incidence Cases WIDE 230413.csv")
+
+inc_cases_18_5yr_NP <- read_csv(file = "SEER Incidence Cases WIDE 230413.csv")
+
+# SEER Population
+inc_pop_raw <- read.csv("SEER Incidence for R Code 230413.csv", na.strings = "^") %>% select(-count)
+inc_pop_raw <- inc_pop_raw %>%
+  rename(raceth = ï..raceth)
+
+inc_pop_wide <- inc_pop_raw %>% # Pivot wider so you can join it with census data
+  pivot_wider(names_from = yr_grp,
+              values_from = population)
+
+write_csv(inc_pop_wide, file = "SEER Incidence Population WIDE 230413.csv")
+  
+
+# Read in Combined SEER and Census Data #
+All_incidence_pop_data_18_5yr_NP <- read_csv(file = "IM Incidence Population AND Census for NordPred 230412.csv")
+```
+
+```{r}
+ # Non-Hispanic White
+
+   # Case data sets
+
+      ## Non-cardia adenocarcinoma
+
+      NHW_inc_cases_noncardia_adeno <- inc_cases_wide %>% filter(raceth == "NHW", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+        select(-raceth, -agecat, -subsite, -histo)
+      
+         # Population
+      NHW_inc_pop_noncardia_adeno <- inc_pop_wide %>% filter(raceth == "NHW", subsite == "Non-cardia", histo == "Adenocarcinoma") %>%
+        select(-raceth, -agecat, -subsite, -histo)
+
+
+
+      NP_inc_est_NHW <- nordpred.estimate(
+        cases=NHW_inc_cases_noncardia_adeno,
+        pyr=NHW_inc_pop_noncardia_adeno,
+        noperiod=4,
+        startestage = 8,
+        linkfunc = "power5"
+        )
+      
+      NP_inc_pred_NHW <- nordpred.prediction(
+        NP_inc_est_NHW,
+        startuseage = 9,
+        cuttrend = c(0.01, 0.01, 0.01),
+        recent = TRUE
+      )
+      
+      NP_inc_pred_num_NHW <- nordpred.getpred(
+        NP_inc_pred_NHW,
+        incidence = FALSE,  # TRUE = rate, FALSE = count
+        standpop = NULL,
+        excludeobs = FALSE,
+        byage = TRUE,
+        agegroups = c(1:18)
+      )
+
+write_csv(x = NP_inc_pred_num_NHW, file = "Non-Hisp White Incidence NordPred Output 230412.csv")
+
+
+
+ # Non-Hispanic Black
+
+   # Cases
+
+NHB_inc_cases <- inc_cases_18_5yr_NP %>% filter(raceth == "NHB") %>%
+  select(-raceth, -agecat)
+
+   # Population
+NHB_inc_pop <- All_incidence_pop_data_18_5yr_NP %>% filter(raceth == "NHB") %>%
+  select(-raceth, -agecat)
+
+
+
+NP_inc_est_NHB <- nordpred.estimate(
+  cases=NHB_inc_cases,
+  pyr=NHB_inc_pop,
+  noperiod=5,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_inc_pred_NHB <- nordpred.prediction(
+  NP_inc_est_NHB,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+NP_inc_pred_num_NHB <- nordpred.getpred(
+  NP_inc_pred_NHB,
+  incidence = FALSE,  # TRUE = rate, FALSE = count
+  standpop = NULL,
+  excludeobs = FALSE,
+  byage = TRUE,
+  agegroups = c(1:18)
+)
+
+write_csv(x = NP_inc_pred_num_NHB, file = "Non-Hisp Black Incidence NordPred Output 230412.csv")
+
+
+ # Non-Hispanic Native American/Alaskan Native
+ #### NUMBERS TOO SMALL TO PROJECT ###
+
+   # Cases
+
+NHAIAN_inc_cases <- inc_cases_18_5yr_NP %>% filter(raceth == "NHAIAN") %>%
+  replace (is.na(.), 0.5)  %>% # Replace NAs with 0.5
+  select(-raceth, -agecat)
+
+
+   # Population
+NHAIAN_inc_pop <- All_incidence_pop_data_18_5yr_NP %>% filter(raceth == "NHAIAN") %>%
+  select(-raceth, -agecat)
+
+
+NP_inc_est_NHAIAN <- nordpred.estimate(
+  cases=NHAIAN_inc_cases,
+  pyr=NHAIAN_inc_pop,
+  noperiod=5,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_inc_pred_NHAIAN <- nordpred.prediction(
+  NP_inc_est_NHAIAN,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+NP_inc_pred_num_NHAIAN <- nordpred.getpred(
+  NP_inc_pred_NHAIAN,
+  incidence = TRUE, # TRUE = rate, FALSE = count
+  standpop = NULL,
+  excludeobs = FALSE,
+  byage = TRUE,
+  agegroups = c(1:18)
+)
+
+write_csv(x = NP_inc_pred_num_NHAIAN, file = "Non-Hisp Native American_Alaskan Native Incidence NordPred Output 230412.csv")
+
+
+ # Non-Hispanic Asian-American/Pacific Islander
+
+   # Cases
+
+NHAAPI_inc_cases <- inc_cases_18_5yr_NP %>% filter(raceth == "NHAAPI") %>%
+  select(-raceth, -agecat)
+
+   # Population
+NHAAPI_inc_pop <- All_incidence_pop_data_18_5yr_NP %>% filter(raceth == "NHAAPI") %>%
+  select(-raceth, -agecat)
+
+
+NP_inc_est_NHAAPI <- nordpred.estimate(
+  cases=NHAAPI_inc_cases,
+  pyr=NHAAPI_inc_pop,
+  noperiod=5,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_inc_pred_NHAAPI <- nordpred.prediction(
+  NP_inc_est_NHAAPI,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+NP_inc_pred_num_NHAAPI <- nordpred.getpred(
+  NP_inc_pred_NHAAPI,
+  incidence = FALSE, # True = rate, False = count
+  standpop = NULL,
+  excludeobs = FALSE,
+  byage = TRUE,
+  agegroups = c(1:18)
+)
+
+write_csv(x = NP_inc_pred_num_NHAAPI, file = "Non-Hisp Asian American_Pacific Islander Incidence NordPred Output 230412.csv")
+
+
+# Hispanic
+
+   # Cases
+
+Hispanic_inc_cases <- inc_cases_18_5yr_NP %>% filter(raceth == "Hispanic") %>%
+  select(-raceth, -agecat)
+
+   # Population
+Hispanic_inc_pop <- All_incidence_pop_data_18_5yr_NP %>% filter(raceth == "Hispanic") %>%
+  select(-raceth, -agecat)
+
+
+NP_inc_est_Hispanic <- nordpred.estimate(
+  cases=Hispanic_inc_cases,
+  pyr=Hispanic_inc_pop,
+  noperiod=5,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_inc_pred_Hispanic <- nordpred.prediction(
+  NP_inc_est_Hispanic,
+  startuseage = 9,
+  cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+NP_inc_pred_num_Hispanic <- nordpred.getpred(
+  NP_inc_pred_Hispanic,
+  incidence = FALSE, # True = rate, False = count
+  standpop = NULL,
+  excludeobs = FALSE,
+  byage = TRUE,
+  agegroups = c(1:18)
+)
+
+write_csv(x = NP_inc_pred_num_Hispanic, file = "Hispanic Incidence NordPred Output 230412.csv")
+
+
+```
+
+```{r echo=FALSE}
+ # Summary plot - difference in projected mortality in 2032
+
+library(ggplot2)
+
+sumplot_data <- read.csv("IM Summary Figure Code for R 230419.csv")
+
+# Make reciprocal proportion variables
+sumplot_data <- sumplot_data %>%
+  mutate(perc_ls = (lives_saved/mortality_2032)*100) # Percentage of lives saved
+
+sumplot_data %>% count(mortality_2032, lives_saved) %>%
+  ggplot() +
+  geom_col(aes(x= mortality_2032, y = n, fill= as.character(lives_saved)), position = 'fill')
+
+
+```
+
+
+
+

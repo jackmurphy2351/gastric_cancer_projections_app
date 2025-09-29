@@ -1,0 +1,810 @@
+---
+title: "IM Modelling Visualizations"
+author: "Jack Murphy"
+date: '2022-10-18'
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r echo=FALSE}
+### SETUP ###
+
+# Read in Nordpred package for projection
+source("C:/Users/murphyjd/Downloads/nordpred.s")
+# install.packages("remotes", "canproj")
+# remotes::install_github("haraldwf/nordpred")
+
+#Load libraries
+library(ggplot2) # Data visualisation
+library(tidyverse) # Data wrangling, analysis
+
+#Set working directory
+setwd("C:/Users/murphyjd/Documents")
+```
+
+
+```{r echo=FALSE}
+# Read in readied data
+
+# Census
+Census_pop_NP <- read.csv(file = "Census All Ready for NordPred.csv", header = T, col.names = c("race_eth",	"age_grp",	'yr2010',	'yr2011',	"yr2012",	"yr2013",	"yr2014",	"yr2015",	"yr2016",	"yr2017",	"yr2018",	"yr2019",	"yr2020",	"yr2021",	"yr2022",	"yr2023",	"yr2024",	"yr2025",	"yr2026",	"yr2027",	"yr2028",	"yr2029"))
+
+# SEER
+SEER_data_NP <- read.csv(file = "SEER Deaths Ready for NordPred.csv")
+
+SEER_18age_5year_NP <- 
+
+```
+
+```{r echo = F}
+# Read in SEER data, 18 age groups, 5-year chunks
+SEER_18age_5year_raw <- read_csv(file = "SEER 18-age 5-year raw.csv", trim_ws = T,
+                                 col_names = c("race_eth", "age_grp18", "YEAR5", "cases", "population"), 
+                                 na = "^")
+
+# Clean up variables
+SEER_18age_5year_1 <- SEER_18age_5year_raw %>% 
+  mutate(race_eth = as.factor(case_when(
+      race_eth == 0 ~ "Non-Hisp White",
+      race_eth == 1 ~ "Non-Hisp Black",
+      race_eth == 2 ~ "Non-Hisp NA/AI",
+      race_eth == 3 ~ "Non-Hisp Asian/PI",
+      race_eth == 4 ~ "Hispanic",
+      race_eth == 5 ~ "Unknown")
+    ),
+    age_grp18 = as.factor(case_when(
+      age_grp18 == 0 ~ "0-4", 
+      age_grp18 == 1 ~ "5-9",
+      age_grp18 == 2 ~ "10-14",
+      age_grp18 == 3 ~ "15-19",
+      age_grp18 == 4 ~ "20-24",
+      age_grp18 == 5 ~ "25-29",
+      age_grp18 == 6 ~ "30-34",
+      age_grp18 == 7 ~ "35-39",
+      age_grp18 == 8 ~ "40-44",
+      age_grp18 == 9 ~ "45-49",
+      age_grp18 == 10 ~ "50-54",
+      age_grp18 == 11 ~ "55-59",
+      age_grp18 == 12 ~ "60-64",
+      age_grp18 == 13 ~ "65-69",
+      age_grp18 == 14 ~ "70-74",
+      age_grp18 == 15 ~ "75-79",
+      age_grp18 == 16 ~ "80-84",
+      age_grp18 == 17 ~ "85+")
+      ),
+    YEAR5 = as.factor(case_when(
+      YEAR5 == 0 ~ "yr93.97",
+      YEAR5 == 1 ~ "yr98.02",
+      YEAR5 == 2 ~ "yr03.07",
+      YEAR5 == 3 ~ "yr08.12",
+      YEAR5 == 4 ~ "yr13.17"))
+  ) %>%
+  select(race_eth, age_grp18, YEAR5, cases, population) %>%
+  filter(race_eth != "Unknown")
+
+## SEER Population estimates
+# Pivot wider, get rid of unneccessary friends
+SEER_18age_5year_pop <- SEER_18age_5year_1 %>% select(-cases)
+
+SEER_18age_5year_pop2 <- pivot_wider(data = SEER_18age_5year_pop,
+              names_from = YEAR5,
+              #names_prefix = "yr",
+              values_from = population, 
+              values_fn = {sum}
+              )
+SEER_18age_5year_pop_NP <- SEER_18age_5year_pop2 %>%
+  select(-age_grp18)
+write_csv(x = SEER_18age_5year_pop_NP, file = "SEER 18age 5-year ready for NP.csv")
+
+SEER_pop_nhw <- SEER_18age_5year_pop_NP %>% filter(race_eth == "Non-Hisp White")
+
+## SEER Cases
+# Pivot wider, get rid of unneccessary friends
+SEER_18age_5year_cases <- SEER_18age_5year_1 %>% select(-population)
+
+SEER_18age_5year_cases2 <- pivot_wider(data = SEER_18age_5year_cases,
+              names_from = YEAR5,
+              #names_prefix = "yr",
+              values_from = cases, 
+              values_fn = {sum}
+              )
+SEER_18age_5year_cases_NP <- SEER_18age_5year_cases2 %>%
+  select(-age_grp18)
+write_csv(x = SEER_18age_5year_cases_NP, file = "SEER Cases ACTUALLY ready for NordPred.csv")
+
+SEER_18age_5year_cases_NP <- read_csv(file = "SEER Cases ACTUALLY ready for NordPred.csv")
+
+
+
+## Census data, 18 age groups, 5-year periods (2019-2024, 2025)
+Census_pops_NP <-read_csv(file = "Census Projections ACTUALLY Ready for NordPred.csv")
+Census_pops_NP2 <- Census_pops_NP %>% select(-`...1`, -age_grp)
+
+## Join population data sets
+NP_pops_all <-read_csv(file = "SEER Census SLAPPED Together 221220.csv")
+
+# Filter by race/ethnicity
+
+# Non-Hispanic White
+#Population
+NP_pops_nhw <- NP_pops_all %>% filter(race_eth == "Non-Hisp White") %>% select(-race_eth)
+#Cases
+NP_cases_nhw <- SEER_18age_5year_cases_NP %>% filter(race_eth == "Non-Hisp White") %>% select(-race_eth)
+
+# Total projected population in 2030
+sum(NP_pops_nhw$yr28.32)
+
+# Non-Hispanic Black
+#Population
+NP_pops_nhb <- NP_pops_all %>% filter(race_eth == "Non-Hisp Black") %>% select(-race_eth)
+#Cases
+NP_cases_nhb <- SEER_18age_5year_cases_NP %>% filter(race_eth == "Non-Hisp Black") %>% select(-race_eth)
+
+# Total projected population in 2030
+sum(NP_pops_nhb$yr28.32)
+
+
+# Non-Hispanic Native American/Alaskan Native
+#Population
+NP_pops_nhnaai <- NP_pops_all %>% filter(race_eth == "Non-Hisp NA/AI") %>% select(-race_eth)
+#Cases
+NP_cases_nhnaai <- SEER_18age_5year_cases_NP %>% filter(race_eth == "Non-Hisp NA/AI") %>% select(-race_eth)
+
+# Total projected population in 2030
+sum(NP_pops_nhnaai$yr28.32)
+
+
+# Non-Hispanic Asian/PI
+#Population
+NP_pops_nhaapi <- NP_pops_all %>% filter(race_eth == "Non-Hisp Asian/PI") %>% select(-race_eth)
+#Cases
+NP_cases_nhaapi <- SEER_18age_5year_cases_NP %>% filter(race_eth == "Non-Hisp Asian/PI") %>% select(-race_eth)
+
+# Total projected population in 2030
+sum(NP_pops_nhaapi$yr28.32)
+
+
+# Hispanic
+#Population
+NP_pops_hisp <- NP_pops_all %>% filter(race_eth == "Hispanic") %>% select(-race_eth)
+#Cases
+NP_cases_hisp <- SEER_18age_5year_cases_NP %>% filter(race_eth == "Hispanic") %>% select(-race_eth)
+
+# Total projected population in 2030
+sum(NP_pops_hisp$yr28.32)
+
+
+```
+
+```{r echo=FALSE}
+Census_pop_2001_10_raw <- read_csv("Census 2001-2010 raw.csv")
+
+Census_pop_01_10_long <- Census_pop_2001_10_raw %>%
+  pivot_longer(cols = Hispanic:NHAAPI, 
+               names_to = "race_eth",
+               values_to = "population"
+               )
+
+Census_pop_01_10_wide1 <- pivot_wider(data = Census_pop_01_10_long,
+              names_from = Year,
+              #names_prefix = "yr",
+              values_from = population, 
+              values_fn = {sum}
+              )
+write_csv(Census_pop_01_10_wide1, file = "Census 2001-2010 wide.csv")
+
+Censuspop_0307 <- read_csv(file = "Census 2003-2007 5-year group to be consolidated.csv")
+
+Censuspop_0307_cleaner <- Censuspop_0307 %>%
+  select(race_eth, Age, yr03.07) %>%
+  group_by(race_eth, Age)
+
+Censuspop_0307_
+
+```
+
+
+
+```{r echo=FALSE}
+# NordPred
+
+# Non-Hispanic White
+NP_est_nhw <- nordpred.estimate(
+  cases=NP_cases_nhw,
+  pyr=NP_pops_nhw,
+  noperiod=5,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_nhw <- nordpred.prediction(
+  NP_est_nhw,
+  startuseage = 9,
+  #cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+NP_pred_num_nhw <- nordpred.getpred(
+  NP_pred_nhw,
+  incidence = FALSE,
+  standpop = NULL,
+  excludeobs = FALSE,
+  byage = TRUE,
+  agegroups = c(1:18)
+)
+
+write_csv(x = NP_pred_num_nhw, file = "Non-Hisp White Absolute Numbers NordPred Output 221223.csv")
+
+# Non-Hispanic Black
+NP_est_nhb <- nordpred.estimate(
+  cases=NP_cases_nhb,
+  pyr=NP_pops_nhb,
+  noperiod=5,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_nhb <- nordpred.prediction(
+  NP_est_nhb,
+  startuseage = 9,
+ # cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+NP_pred_num_nhb <- nordpred.getpred(
+  NP_pred_nhb,
+  incidence = FALSE, #Toggle between rate (TRUE) and absolute (FALSE)
+  standpop = NULL,
+  excludeobs = FALSE,
+  byage = TRUE,
+  agegroups = c(1:18)
+)
+
+write_csv(x = NP_pred_num_nhb, file = "Non-Hisp Black Absolute Numbers NordPred Output 221223.csv")
+
+# Non-Hispanic Native American/Alaskan Native
+NP_est_nhnaai <- nordpred.estimate(
+  cases=NP_cases_nhnaai,
+  pyr=NP_pops_nhnaai,
+  noperiod=5,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_nhnaai <- nordpred.prediction(
+  NP_est_nhnaai,
+  startuseage = 9,
+  #cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+NP_pred_num_nhnaai <- nordpred.getpred(
+  NP_pred_nhnaai,
+  incidence = FALSE,
+  standpop = NULL,
+  excludeobs = FALSE,
+  byage = TRUE,
+  agegroups = c(1:18)
+)
+
+write_csv(x = NP_pred_num_nhnaai, file = "Non-Hisp NAAI Absolute Numbers NordPred Output 221223.csv")
+
+
+# Non-Hispanic Asian/Pacific Islander
+NP_est_nhaapi <- nordpred.estimate(
+  cases=NP_cases_nhaapi,
+  pyr=NP_pops_nhaapi,
+  noperiod=5,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_nhaapi <- nordpred.prediction(
+  NP_est_nhaapi,
+  startuseage = 9,
+ # cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+NP_pred_num_nhaapi <- nordpred.getpred(
+  NP_pred_nhaapi,
+  incidence = FALSE,
+  standpop = NULL,
+  excludeobs = FALSE,
+  byage = TRUE,
+  agegroups = c(1:18)
+)
+
+write_csv(x = NP_pred_num_nhaapi, file = "Non-Hisp AAPI Absolute Numbers NordPred Output 221223.csv")
+
+# Hispanic
+NP_est_hisp <- nordpred.estimate(
+  cases=NP_cases_hisp,
+  pyr=NP_pops_hisp,
+  noperiod=5,
+  startestage = 8,
+  linkfunc = "power5"
+  )
+
+NP_pred_hisp <- nordpred.prediction(
+  NP_est_hisp,
+  startuseage = 9,
+ # cuttrend = c(0.01, 0.01, 0.01),
+  recent = TRUE
+)
+
+NP_pred_num_hisp <- nordpred.getpred(
+  NP_pred_hisp,
+  incidence = FALSE,
+  standpop = NULL,
+  excludeobs = FALSE,
+  byage = TRUE,
+  agegroups = c(1:18)
+)
+
+write_csv(x = NP_pred_num_hisp, file = "Hispanic Absolute Numbers NordPred Output 221223.csv")
+
+
+
+
+## Example ##
+
+# Observed cases of CRC
+indata <- read.table("C:/Users/murphyjd/Downloads/nordpred-data-eks/data/colon-men-Norway.txt",header=T,sep=",",row.names=1)
+# Observed person-years among Norwegian men
+inpop1 <- read.table("C:/Users/murphyjd/Downloads/nordpred-data-eks/data/men-Norway.txt",header =T,sep=",",row.names=1)
+# Predicted population of Norwegian men
+inpop2 <- read.table("C:/Users/murphyjd/Downloads/nordpred-data-eks/data/men-Norway-pred.txt",header =T,sep=",",row.names=1)
+=
+# Include possible population predictions
+inpop <- cbind(inpop1,inpop2)
+
+# Fit model & predict new incidence:
+res <- nordpred(cases=indata,
+                pyr=inpop,
+                startestage=5,
+                startuseage=6,
+                noperiods=4,
+                cuttrend=c(0,.25,.5,.75,.75))
+
+res2 <- nordpred(indata,
+                 inpop,
+                 startestage=5,
+                 startuseage=6,
+                 cuttrend=c(0,.25,.5,.75,.75),
+                 linkfunc="poisson")
+# Print / get results:
+print(res)
+nordpred.getpred(res)
+summary(res,printpred=F)
+# Get results with standardisation:
+wstand <- c(0.12, 0.1, 0.09, 0.09, 0.08, 0.08, 0.06, 0.06, 0.06, 0.06,0.05, 0.04, 0.04, 0.03, 0.02, 0.01, 0.005, 0.005)
+round(nordpred.getpred(res,incidence=T,standpop=NULL),2)
+round(nordpred.getpred(res,incidence=T,standpop=wstand),2)
+# Plot results:
+plot(res,standpop=wstand)
+# Plot results with power5 and poisson links:
+plot(res2,standpop=wstand)
+plot(res,new=F,lty=c(1,2),standpop=wstand)
+# Different cut trend scenarios, using average drift (recent=F):
+plot(nordpred.prediction(est,startuseage=6,cuttrend=c(0,0,0,0,0),recent
+=F),standpop=wstand,new=T)
+plot(nordpred.prediction(est,startuseage=6,cuttrend=c(1,1,1,1,1),recent
+=F),standpop=wstand,new=F,lty=c(1,2))
+plot(nordpred.prediction(est,startuseage=6,cuttrend=c(0,.25,.5,.75,.75)
+,recent=F),standpop=wstand,new=F,lty=c(1,4))
+
+
+```
+
+
+
+
+```{r echo=FALSE}
+
+ ### CODING DREGS ###
+
+# Census_deaths_raw <- read.csv(file = "US Census 2017 National Death Projections copy.csv", 
+#                             header = T, 
+#                             na.strings = c(" ")
+#    )
+# Census_deaths <- Census_deaths_raw %>%
+#   rename(race_eth = ï..race_eth) %>%
+#   mutate(year = as.character(YEAR)) %>%
+#   filter(YEAR >= 2020, YEAR < 2030) %>% #Remove observation in 2019 (since there's no population estimate for that year)
+#   group_by(race_eth, YEAR) %>%
+#   summarise(dth_40 = sum(DTH_.40),
+#             dth_40_44 = sum(DTH_40.44),
+#             dth_45_49 = sum(DTH_45.49),
+#             dth_50_54 = sum(DTH_50.54),
+#             dth_55_59 = sum(DTH_55.59),
+#             dth_60_64 = sum(DTH_60.64),
+#             dth_65_69 = sum(DTH_65.69),
+#             dth_70_74 = sum(DTH_70.74),
+#             dth_75_79 = sum(DTH_75.79),
+#             dth_80_84 = sum(DTH_80.84),
+#             dth_85 = sum(DTH_85.))
+# 
+
+# Pivot longer
+Census_deaths_long <- Census_all_ %>%
+  select(-(pop_40:pop_85)) %>%
+  pivot_longer(cols = dth_40:dth_85, 
+               names_to = "age_grp",
+               values_to = "deaths"
+               ) %>%
+  mutate(age_grp2 = as.factor(case_when(
+    age_grp == "dth_40" ~ "<40",
+    age_grp == "dth_40_44" ~ "40-44",
+    age_grp == "dth_45_49" ~ "45-49",
+    age_grp == "dth_50_54" ~ "50-54",
+    age_grp == "dth_55_59" ~ "55-59",
+    age_grp == "dth_60_64" ~ "60-64",
+    age_grp == "dth_65_69" ~ "65-69",
+    age_grp == "dth_70_74" ~ "70-74",
+    age_grp == "dth_75_79" ~ "75-79",
+    age_grp == "dth_80_84" ~ "80-84",
+    age_grp == "dth_85" ~ "85+"))) %>%
+  select(race_eth, age_grp2, YEAR, deaths)
+
+
+
+
+# Put long data sets together
+Census_all_long <- left_join(Census_pop_long, Census_deaths_long)
+# Change age_grp2 name back to original
+Census_all_long <- Census_all_long %>% rename(age_grp = age_grp2)
+
+#write.csv(Census_all_, file = "Census Data for Projections.csv")
+
+# Incidence rate data
+IM_rate_dat_raw <- read.csv(file = "GC Mortality APCs for NordPred 221026.csv", 
+                            header = T, 
+                            na.strings = c(" ")
+   )
+
+# Recode variables - make factor, drop unknown race
+IM_rate_dat <- IM_rate_dat_raw %>% 
+  mutate(age_grp2 = as.factor(case_when(
+    age_grp == 0 ~ "<40",
+    age_grp == 1 ~ "40-44",
+    age_grp == 2 ~ "45-49",
+    age_grp == 3 ~ "50-54",
+    age_grp == 4 ~ "55-59",
+    age_grp == 5 ~ "60-64",
+    age_grp == 6 ~ "65-69",
+    age_grp == 7 ~ "70-74",
+    age_grp == 8 ~ "75-79",
+    age_grp == 9 ~ "80-84",
+    age_grp == 10 ~ "85+")),
+    race_eth2 = as.factor(case_when(
+      race_eth == 0 ~ "Non-Hisp White",
+      race_eth == 1 ~ "Non-Hisp Black",
+      race_eth == 2 ~ "Non-Hisp NA/AI",
+      race_eth == 3 ~ "Non-Hisp Asian/PI",
+      race_eth == 4 ~ "Hispanic",
+      race_eth == 5 ~ "Unknown")
+    ),
+    yr_death2 = as.factor(case_when(
+      yr_death == 0 ~ "2010-2019 PC",
+      yr_death == 1 ~ "2010-2019 APC",
+      yr_death == 2 ~ "2010 rate",
+      yr_death == 3 ~ "2011 rate",
+      yr_death == 4 ~ "2012 rate",
+      yr_death == 5 ~ "2013 rate",
+      yr_death == 6 ~ "2014 rate",
+      yr_death == 7 ~ "2015 rate",
+      yr_death == 8 ~ "2016 rate",
+      yr_death == 9 ~ "2017 rate",
+      yr_death == 10 ~ "2018 rate",
+      yr_death == 11 ~ "2019 rate"))
+  ) %>%
+  select(race_eth2, age_grp2, yr_death2, annual_rate, se, low_CI, up_CI) %>%
+  filter(race_eth2 != "Unknown", yr_death2 != "2010-2019 PC")
+
+
+IM_rate_dat_APC1 <- IM_rate_dat %>%
+  group_by(race_eth2, age_grp2, yr_death2) %>%
+  filter(yr_death2 == "2010-2019 APC") %>%
+  summarise(APC = annual_rate) %>%
+  select(-yr_death2)
+
+IM_rate_dat_APC2 <- left_join(x = IM_rate_dat, y = IM_rate_dat_APC1, by = c("race_eth2", "age_grp2"))
+
+IM_rate_dat_final <- IM_rate_dat_APC2 %>%
+  filter(yr_death2 != "2010-2019 APC")
+
+IM_rate_dat_final %>% group_by(race_eth2, age_grp2, APC)
+
+```
+```{r}
+
+```
+
+```{r echo=FALSE}
+# Projections from US Census 2017 (population and mortality)
+
+#Read in Census data (commented out part below is data setup)
+# Census_pop_proj <- read.csv("Census Projections Ready for NordPred.csv")
+
+#Census numbers 2018-2032
+Census_pop18 <- read_csv("Census projections 18 agegrp to be grouped into 5-year.csv")
+
+#Pivot longer via age group
+Census_pop18_2 <- Census_pop %>%
+  pivot_longer(cols = x0.4:x85.,
+                names_to = "age_grp",
+                values_to = "population"
+                ) %>%
+  mutate(age_grp2 = as.factor(case_when(
+   age_grp == "X0.4" ~ "0-4", 
+    age_grp == "X5.9" ~ "5-9",
+    age_grp == "X10.14" ~ "10-14",
+    age_grp == "X15.19" ~ "15-19",
+    age_grp == "X20.24" ~ "20-24",
+    age_grp == "X25.29" ~ "25-29",
+    age_grp == "X30.34" ~ "30-34",
+    age_grp == "X35.39" ~ "35-39",
+    age_grp == "X40.44" ~ "40-44",
+    age_grp == "X45.49" ~ "45-49",
+    age_grp == "X50.54" ~ "50-54",
+    age_grp == "X55.59" ~ "55-59",
+    age_grp == "X60.64" ~ "60-64",
+    age_grp == "X65.69" ~ "65-69",
+    age_grp == "X70.74" ~ "70-74",
+    age_grp == "X75.79" ~ "75-79",
+    age_grp == "X80.84" ~ "80-84",
+    age_grp == "X85." ~ "85+"))) %>%
+  select(race_eth, age_grp2, YEAR, population) %>%
+  rename(age_grp = age_grp2)
+
+# Pivot wide by YEAR
+Census_pop18_NP <- pivot_wider(data = Census_pop18_2,
+              names_from = YEAR,
+              names_prefix = "yr",
+              values_from = population, 
+              values_fn = {sum}
+              )
+# Save
+write.csv(x = Census_pop3, file = "Census 2010-20 Pop Ready for NordPred.csv")
+
+
+
+#Read in SEER data (commented out part below is data setup)
+
+# SEER_data_raw <- read.csv(file = "IM Modelling Deaths Raw 221218.csv", col.names = c("race_eth", "age_grp", "YEAR", "cases", "Population"), na.strings = "^")
+# 
+# SEER_data <- SEER_data_raw %>% mutate(age_grp = as.factor(case_when(
+#     age_grp == 0 ~ "<40",
+#     age_grp == 1 ~ "40-44",
+#     age_grp == 2 ~ "45-49",
+#     age_grp == 3 ~ "50-54",
+#     age_grp == 4 ~ "55-59",
+#     age_grp == 5 ~ "60-64",
+#     age_grp == 6 ~ "65-69",
+#     age_grp == 7 ~ "70-74",
+#     age_grp == 8 ~ "75-79",
+#     age_grp == 9 ~ "80-84",
+#     age_grp == 10 ~ "85+")),
+#     race_eth = as.factor(case_when(
+#       race_eth == 0 ~ "Non-Hisp White",
+#       race_eth == 1 ~ "Non-Hisp Black",
+#       race_eth == 2 ~ "Non-Hisp NA/AI",
+#       race_eth == 3 ~ "Non-Hisp Asian/PI",
+#       race_eth == 4 ~ "Hispanic",
+#       race_eth == 5 ~ "Unknown")
+#     ),
+#     YEAR = as.numeric(case_when(
+#       YEAR == 0 ~ 2010,
+#       YEAR == 1 ~ 2011,
+#       YEAR == 2 ~ 2012,
+#       YEAR == 3 ~ 2013,
+#       YEAR == 4 ~ 2014,
+#       YEAR == 5 ~ 2015,
+#       YEAR == 6 ~ 2016,
+#       YEAR == 7 ~ 2017,
+#       YEAR == 8 ~ 2018,
+#       YEAR == 9 ~ 2019,
+#       YEAR == 10 ~ 2020))
+#   ) %>%
+#   select(race_eth, age_grp, YEAR, cases, Population) %>%
+#   filter(race_eth != "Unknown")
+
+# Pivot wider by YEAR
+SEER_data_wide <- SEER_data %>% pivot_wider(data = . ,
+                                names_from = YEAR,
+                                names_prefix = "yr",
+                                values_from = cases
+                                ) %>%
+  select(-Population)
+
+# Save cleaned file
+write.csv(x = SEER_data_wide, file = "SEER Deaths Ready for NordPred.csv")
+
+#SEER_deaths <- read.csv(file = "SEER cases ready for NordPred.csv")
+# SEER_deaths <- read.csv(file = "SEER 18 age groups 2010-2020.csv", 
+#                         header = T, 
+#                         na.strings = "^")
+
+
+Census_proj_18 <- read.csv(file = "2017 Census Projections Raw 2.csv", header = T, col.names = c("race_eth",	"YEAR",	"0-4", "5-9", "10-14",	"15-19",	"20-24", "25-29", "30-34", "35-39", "40-44", "45-49", "50-54", "55-59", "60-64", "65-69", "70-74", "75-79", "80-84", "85+"))
+ 
+# Census data - pivot longer by age group
+Census_proj_18_long <- Census_proj_18 %>%
+  pivot_longer(cols = X0.4:X85.,
+               names_to = "age_grp",
+               values_to = "population"
+               ) %>%
+Census_proj_18_long2 <-Census_proj_18_long %>%
+  mutate(age_grp2 = as.factor(case_when(
+    age_grp == "X0.4" ~ "0-4", 
+    age_grp == "X5.9" ~ "5-9",
+    age_grp == "X10.14" ~ "10-14",
+    age_grp == "X15.19" ~ "15-19",
+    age_grp == "X20.24" ~ "20-24",
+    age_grp == "X25.29" ~ "25-29",
+    age_grp == "X30.34" ~ "30-34",
+    age_grp == "X35.39" ~ "35-39",
+    age_grp == "X40.44" ~ "40-44",
+    age_grp == "X45.49" ~ "45-49",
+    age_grp == "X50.54" ~ "50-54",
+    age_grp == "X55.59" ~ "55-59",
+    age_grp == "X60.64" ~ "60-64",
+    age_grp == "X65.69" ~ "65-69",
+    age_grp == "X70.74" ~ "70-74",
+    age_grp == "X75.79" ~ "75-79",
+    age_grp == "X80.84" ~ "80-84",
+    age_grp == "X85." ~ "85+"))) %>%
+  select(race_eth, age_grp2, YEAR, population)
+ 
+# Now pivot census data wider by YEAR
+Census_18_proj_wide <- pivot_wider(data = Census_proj_18_long2, names_from = YEAR,
+                               names_prefix = "yr",
+                               values_from = population,
+                               values_fn = {sum}
+                               ) %>%
+  rename(age_grp = age_grp2)
+
+# Left-join observed census and projected numbers
+Census_all_18_NP <- left_join(x = Census_pop18_NP, y = Census_18_proj_wide)
+
+write_csv(x = Census_all_18_NP, file = "Census Observed and Projections 18 age groups Ready for NordPred.csv")
+
+#  select(-yr2020) #Drop projected 2020 year because it's observed in SEER data
+
+# Stomach cancer deaths data - 18 age groups
+SEER_data_raw18 <- read.csv(file = "SEER 18 age groups 2010-2020.csv", header = T, na.strings = "NA")
+ 
+SEER_data18 <- SEER_data_raw18 %>% mutate(age_grp18 = as.factor(case_when(
+    age_grp18 == 0 ~ "0-4",
+    age_grp18 == 1 ~ "5-9",
+    age_grp18 == 2 ~ "10-14",
+    age_grp18 == 3 ~ "15-19",
+    age_grp18 == 4 ~ "20-24",
+    age_grp18 == 5 ~ "25-29",
+    age_grp18 == 6 ~ "30-34",
+    age_grp18 == 7 ~ "35-39",
+    age_grp18 == 8 ~ "40-44",
+    age_grp18 == 9 ~ "45-49",
+    age_grp18 == 10 ~ "50-54",
+    age_grp18 == 11 ~ "55-59",
+    age_grp18 == 12 ~ "60-64",
+    age_grp18 == 13 ~ "65-69",
+    age_grp18 == 14 ~ "70-74",
+    age_grp18 == 15 ~ "75-79",
+    age_grp18 == 16 ~ "80-84",
+    age_grp18 == 17 ~ "85+")),
+    race_eth = as.factor(case_when(
+      race_eth == 0 ~ "Non-Hisp White",
+      race_eth == 1 ~ "Non-Hisp Black",
+      race_eth == 2 ~ "Non-Hisp NA/AI",
+      race_eth == 3 ~ "Non-Hisp Asian/PI",
+      race_eth == 4 ~ "Hispanic",
+      race_eth == 5 ~ "Unknown")
+    ),
+    YEAR = as.numeric(case_when(
+      YEAR == 0 ~ 2010,
+      YEAR == 1 ~ 2011,
+      YEAR == 2 ~ 2012,
+      YEAR == 3 ~ 2013,
+      YEAR == 4 ~ 2014,
+      YEAR == 5 ~ 2015,
+      YEAR == 6 ~ 2016,
+      YEAR == 7 ~ 2017,
+      YEAR == 8 ~ 2018,
+      YEAR == 9 ~ 2019,
+      YEAR == 10 ~ 2020))
+  ) %>%
+  select(race_eth, age_grp18, YEAR, cases) %>%
+  filter(race_eth != "Unknown")
+
+#Pivot wider by year
+SEER_data18_wide <- SEER_data18 %>% pivot_wider(data = . ,
+                                names_from = YEAR,
+                                names_prefix = "yr",
+                                values_from = cases
+                                )
+  
+
+# Save cleaned SEER cases by year (somehow lost the code for this)
+write.csv(SEER_data18_wide, file = "SEER cases 18 age groups ready for NordPred.csv")
+SEER_data_18_NP <- read.csv(file = "SEER cases 18 age groups ready for NordPred.csv")
+SEER_data_18_NP2 <- SEER_data_18_NP %>%
+  mutate(age_grp18 = if_else(age_grp18 == "9-May",
+                             "5-9",
+                             age_grp18))
+SEER_data_18_NP3 <- SEER_data_18_NP2 %>%
+  mutate(age_grp18 = if_else(age_grp18 == "14-Oct",
+                             "10-14",
+                             age_grp18))
+
+write_csv(x = SEER_data_18_NP3, file = "SEER Data 18 age groups almost there.csv")
+
+# Create 5-year groups, drop irrelevant variables
+SEER_data2 <- SEER_data_18_NP3 %>%
+  mutate(yr_5 = if_else(
+    YEAR < 2015,
+    "yr10.14",
+    "yr15.20"
+  )
+  ) %>%
+  select(race_eth, age_grp, yr_5, cases, Population)
+
+
+# Population
+Census_pop_wide <- SEER_data2 %>% pivot_wider(data = .,
+                               names_from = yr_5,
+                               values_from = Population, 
+                               values_fn = {sum}
+                               ) %>%
+  select(-cases)
+
+
+# Data sets by race/ethnicity, 18 age groups
+
+# Read in 5-year grouped data
+SEER_data_18_5yr_NP <- read_csv(file = "SEER Data 18 age groups 5-year groups.csv")
+Census_data_18_5yr_NP <- read_csv(file = "Census Observed and Projections 18 age groups 5-year groups.csv")
+
+#Non-Hispanic White
+SEER_nhw18_5yr <- SEER_data_18_5yr_NP %>%
+  filter(race_eth == "Non-Hisp White") %>%
+  select(-race_eth)
+
+#Non-Hispanic Black
+SEER_nhb <- SEER_data_NP %>%
+  filter(race_eth == "Non-Hisp Black") %>%
+  group_by(age_grp) %>%
+  select(-race_eth)
+
+#Non-Hispanic American Indian/Alaskan Native
+SEER_nhaian <- SEER_data_NP %>%
+  filter(race_eth == "Non-Hisp NA/AI") %>%
+  group_by(age_grp) %>%
+  select(-race_eth)
+
+#Non-Hispanic Asian-American/Pacific Islander
+SEER_nhaapi <- SEER_data_NP %>%
+  filter(race_eth == "Non-Hisp Asian/PI") %>%
+  group_by(age_grp) %>%
+  select(-race_eth)
+
+#Hispanic
+SEER_hisp <- SEER_data_NP %>%
+  filter(race_eth == "Hispanic") %>%
+  group_by(age_grp) %>%
+  select(-race_eth)
+
+
+#Bind observed population from SEER and projected population columns from census
+Census_18_5yr_nhw <- Census_data_18_5yr_NP %>% filter(race_eth == "Non-Hisp White") %>%
+  select(-race_eth)
+
+#Non-Hispanic white
+# NP_pops_nhw <- left_join(x = SEER_pop_nhw, y = Census_pop_proj_nhw, by = "age_grp")
+
+```

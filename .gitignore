@@ -1,0 +1,32 @@
+# R-specific files
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+*.Rproj
+
+# R package-specific files
+*.tar.gz
+*.tgz
+
+# Shiny-specific
+rsconnect/
+shinyapps/
+
+# Data files (if sensitive - adjust as needed)
+# *.csv
+# *.xlsx
+# *.rds
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# IDE-specific
+.vscode/
+.idea/
+
+# Temporary files
+*~
+*.swp
+*.swo

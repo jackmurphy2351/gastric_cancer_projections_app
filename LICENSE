@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2025 Jack Murphy
+Copyright (c) 2025 John D. Murphy, Ph.D. M.P.H.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -19,3 +19,22 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+---
+
+DATA SOURCES AND ATTRIBUTIONS:
+
+This software uses data from:
+
+1. Surveillance, Epidemiology, and End Results (SEER) Program
+   - National Cancer Institute
+   - https://seer.cancer.gov/
+   - Data used in accordance with SEER data use agreement
+
+2. U.S. Census Bureau
+   - Population estimates and projections
+   - https://www.census.gov/
+   - Public domain data
+
+Users of this software should cite the original data sources appropriately in
+any publications or presentations that use results from this tool.

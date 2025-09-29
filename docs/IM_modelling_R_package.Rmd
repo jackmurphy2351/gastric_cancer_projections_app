@@ -1,0 +1,429 @@
+---
+title: "IM Modelling Code"
+author: "Jack Murphy"
+date: '2025-07-14'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+
+This model sprung from an attempt to model the potential effect that implementation of endoscopic screening for high-risk intestinal metaplasia may have on reducing mortality from gastric cancer. Intestinal metaplasia is a precursor lesion with a high risk of progressing to gastric cancer.
+
+# Components of the Model
+
+data - A data set with rows for 5-year age groups and columns for year of observation. Cells contain outcome rates (either incidence or mortality) for each 5-year age group and year of observation.
+
+col1 - Specifies which column in the data set is the first that contains data for analysis. Preceding columns (i.e., columns to the left of col1) will be converted into row labels. 
+
+prop - The proportion of cases in each of up to four intervention groups. Proportions must sum to 1. They are entered as c(a, b, c, d) where:
+Cell a represents those who receive no intervention
+Cell b represents those who receive only intervention 1
+Cell c represents those who receive only intervention 2
+Cell d represents those who receive both interventions 1 and 2
+
+rr1 - Relative risk of the outcome after intervention 1
+rr2 - Relative risk of the outcome after intervention 2
+
+comp_1 - a number between 0 and 1 for the proportion of patients who comply with intervention 1
+
+comp_2 - a number between 0 and 1 for the proportion of patients who comply with intervention 2
+
+```{r echo=FALSE}
+
+# Libraries
+library(tidyverse)
+
+# Example data set
+
+# setwd("~/im_modelling_proj")
+
+# Rates (Total GC mortality for all race/ethnicity and age groups)
+example_dat_labels <- read.csv("data/example_dat_labels.csv", col.names = c("race_eth",	"age",	"rate",	"a",	"b",	"c",	"d"))
+
+prop <- matrix(data = c(0.5, 0.3, 0.1, 0.1), nrow = 2, ncol = 2, byrow = T)
+
+```
+
+
+
+
+```{r echo=T}
+# Function to convert categorical variables to row labels
+
+create_row_names <- function(data, col1) {
+  # Check if col1 is the first column in the dataset
+  if (which(names(data) == col1) == 1) {
+    # If col1 is the first column, return the original data set as it is
+    return(data)
+  } else {
+    # Extract the columns before the given column 'col1'
+    columns_before_col1 <- data[, 1:(which(names(data) == col1) - 1)]
+
+    # Create row names by concatenating the text from each row
+    row_names <- apply(columns_before_col1, 1, paste, collapse = "_")
+
+    # Assign the row names to the dataset
+    rownames(data) <- row_names
+
+    labeled_data <- data[, (which(names(data) == col1)):ncol(data)]
+
+    return(list(data = labeled_data, row_names = row_names))  # Return both labeled data and row names
+  }
+}
+
+
+## Ummeed function ##
+ummeed <- function(data, col1, rr1, rr2, comp_1, comp_2, effect_1, effect_2, print_statement = TRUE) {
+  library(tidyverse)
+
+  # Convert categories into row labels
+  labeled_data_and_row_names <- create_row_names(data, col1)
+  labeled_data <- labeled_data_and_row_names$data
+  row_names <- labeled_data_and_row_names$row_names
+
+  # Create the statement
+  statement <- paste(
+    "Assuming", effect_1 * 100, "% effectiveness of, and",
+    comp_1 * 100, "% compliance with, endoscopy, and",
+    effect_2 * 100, "% effectiveness of, and",
+    comp_2 * 100, "% compliance with, Helicobacter pylori eradication therapy,",
+    "the number and percentage of gastric cancer deaths prevented by racial/ethnic group and age group would be:"
+  )
+
+  # Analysis
+  # Calculate interventional relative risk (IRR)
+  IRR <- (labeled_data$a * 1) + (labeled_data$b * rr1 * effect_1 * comp_1) + (labeled_data$c * rr2 * effect_2 * comp_2) + (labeled_data$d * rr1 * rr2 * effect_1 * comp_1 * effect_2 * comp_2)
+
+  # Create data set that is original data (rates) multiplied by IRR
+  output <- as.data.frame(
+    cbind(row_names,  # Use row_names as the first column
+          IRR,  # Interventional relative risk
+          labeled_data[, 1] * IRR,  # Post-intervention
+          labeled_data[, 1] - (labeled_data[, 1] * IRR),  # Lives saved (difference col1 - col2)
+          ((labeled_data[, 1] - (labeled_data[, 1] * IRR)) / labeled_data[, 1]) * 100)  # Percentage lives saved
+  )
+
+  # Name columns in the output data set
+  colnames(output) <- c("Group", 
+                        "IRR",
+                        "Post-intervention", 
+                        "Lives saved",
+                        "Percentage of lives saved")
+
+  # Print the statement if requested
+  if (print_statement) {
+    cat(statement, "\n")
+  }
+
+  return(output)
+}
+```
+
+### Features to consider including
+
+Built-in compliance levels (100, 75, 50, 25)
+
+```{r}
+# Testing if values-to-labels code worked:
+
+  # Replace 'col1' with the appropriate column name where you want to stop concatenating text.
+  
+  modified_data <- create_row_names(example_dat_labels, col1 = "rate")
+  
+  ## IT WORKED!! :D ##
+
+
+# Try it out - see if numbers replicate what's in your Excel file
+
+attempt_1 <- ummeed(data = example_dat_labels,
+                    col1 = "rate",
+                    rr1 = 0.6, 
+                    rr2 = 0.6,
+                    effect_1 = 1,
+                    effect_2 = 1,
+                    comp_1 = 1, 
+                    comp_2 = 1)
+attempt_1
+
+
+```
+
+```{r}
+# Figure 1 (Updated 11/01/2023)
+
+# Load the required libraries
+library(tidyverse)
+
+# Create a data frame with your CSV data, including descriptive names for raceth
+data1 <- data.frame(
+  raceth = c("Non-Hispanic White", "Non-Hispanic Black", "Non-Hispanic American Indian/ \n Alaskan Native", "Non-Hispanic Asian/ \n Pacific Islander", "Hispanic", "All"),
+  mortality = c(6.346276058, 12.09101109, 10.90626758, 10.85711322, 11.61287924, 8.155004327),
+  lives_saved = c(2.194663231, 4.191997369, 3.1973821, 3.85793311, 3.048391738, 2.523381168)
+)
+
+
+library(ggplot2)
+
+# Define a custom color palette for different raceth and Variable combinations
+custom_colors <- c("All_mortality" = "#EC7063",
+                   "All_lives_saved" = "#FADBD8",
+                   "Non-Hispanic White_mortality" = "#A569BD",
+                   "Non-Hispanic White_lives_saved" = "#E8DAEF",
+                   "Non-Hispanic Black_mortality" = "#F4D03F",
+                   "Non-Hispanic Black_lives_saved" = "#FCF3CF",
+                   "Non-Hispanic American Indian/ \n Alaskan Native_mortality" = "#58D68D",
+                   "Non-Hispanic American Indian/ \n Alaskan Native_lives_saved" = "#D5F5E3",
+                   "Non-Hispanic Asian/ \n Pacific Islander_mortality" = "#F5B041",
+                   "Non-Hispanic Asian/ \n Pacific Islander_lives_saved" = "#FDEBD0",
+                   "Hispanic_mortality" = "#5DADE2",
+                   "Hispanic_lives_saved" = "#D6EAF8")
+
+fig1 <- data1 %>%
+  # Reshape data for ggplot2
+  pivot_longer(cols = c(mortality, lives_saved), names_to = "Variable", values_to = "Value") %>%
+  # Create the plot
+  ggplot(aes(x = factor(raceth, levels = c("Non-Hispanic White", "Non-Hispanic Black", "Non-Hispanic American Indian/ \n Alaskan Native", "Non-Hispanic Asian/ \n Pacific Islander", "Hispanic", "All")), y = Value, fill = paste(raceth, Variable, sep = "_"))) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = sprintf("%.2f", Value), y = ifelse(Variable == "mortality", Value/2, (Value/2 + lag(Value)))), vjust = 1, color = "black", size = 3) + # Increase label size by 20%
+  labs(
+    y = "Gastric Cancer Mortality Rate per 100,000",
+    x = "Racial/Ethnic Group",
+    fill = ""
+  ) +
+  scale_fill_manual(
+    values = custom_colors,
+    name = "Variable",
+    labels = c("Mortality per 100,000", "Reduction in Mortality")
+  ) + # Custom color codes and legend labels for Variable
+  theme_minimal(base_size = 12) + # Increase base font size by 20%
+  theme(legend.position = "none",  # Remove the legend
+        axis.text.x = element_text(size = 9)) + # Adjust the size of X-axis labels
+  ggtitle(
+    expression(italic("100% Compliance"))
+  ) +
+  theme(
+    plot.subtitle = element_text(size = 18)
+  ) +
+  guides(fill = FALSE)  # Remove the legend
+
+# Print the plot
+print(fig1)
+
+
+
+```
+
+```{r}
+# Figure 2 - 75% Compliance
+
+# Create a data frame with your CSV data, including descriptive names for raceth
+data2 <- data.frame(
+  raceth = c("Non-Hispanic White", "Non-Hispanic Black", "Non-Hispanic American Indian/ \n Alaskan Native", "Non-Hispanic Asian/ \n Pacific Islander", "Hispanic", "All"),
+  mortality = c(6.346276058, 12.09101109, 10.90626758, 10.85711322, 11.61287924, 8.155004327),
+  lives_saved = c(1.623681512, 3.088359036, 2.210024415, 2.803281487, 2.011921117, 1.800374302)
+)
+
+# Define a custom color palette for different raceth and Variable combinations
+custom_colors <- c("All_mortality" = "#EC7063",
+                   "All_lives_saved" = "#FADBD8",
+                   "Non-Hispanic White_mortality" = "#A569BD",
+                   "Non-Hispanic White_lives_saved" = "#E8DAEF",
+                   "Non-Hispanic Black_mortality" = "#F4D03F",
+                   "Non-Hispanic Black_lives_saved" = "#FCF3CF",
+                   "Non-Hispanic American Indian/ \n Alaskan Native_mortality" = "#58D68D",
+                   "Non-Hispanic American Indian/ \n Alaskan Native_lives_saved" = "#D5F5E3",
+                   "Non-Hispanic Asian/ \n Pacific Islander_mortality" = "#F5B041",
+                   "Non-Hispanic Asian/ \n Pacific Islander_lives_saved" = "#FDEBD0",
+                   "Hispanic_mortality" = "#5DADE2",
+                   "Hispanic_lives_saved" = "#D6EAF8")
+
+fig2 <- data2 %>%
+  # Reshape data for ggplot2
+  pivot_longer(cols = c(mortality, lives_saved), names_to = "Variable", values_to = "Value") %>%
+  # Create the plot
+  ggplot(aes(x = factor(raceth, levels = c("Non-Hispanic White", "Non-Hispanic Black", "Non-Hispanic American Indian/ \n Alaskan Native", "Non-Hispanic Asian/ \n Pacific Islander", "Hispanic", "All")), y = Value, fill = paste(raceth, Variable, sep = "_"))) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = sprintf("%.2f", Value), y = ifelse(Variable == "mortality", Value/2, (Value/2 + lag(Value)))), vjust = 1, color = "black", size = 3) + # Increase label size by 20%
+  labs(
+    y = "Gastric Cancer Mortality Rate per 100,000",
+    x = "Racial/Ethnic Group",
+    fill = ""
+  ) +
+  scale_fill_manual(
+    values = custom_colors,
+    name = "Variable",
+    labels = c("Mortality per 100,000", "Reduction in Mortality")
+  ) + # Custom color codes and legend labels for Variable
+  theme_minimal(base_size = 12) + # Increase base font size by 20%
+  theme(legend.position = "none",  # Remove the legend
+        axis.text.x = element_text(size = 9)) + # Adjust the size of X-axis labels
+  ggtitle(
+    expression(italic("75% Compliance"))
+  ) +
+  theme(
+    plot.subtitle = element_text(size = 18)
+  ) +
+  guides(fill = FALSE)  # Remove the legend
+
+# Print the plot
+print(fig2)
+
+
+
+```
+
+```{r}
+# Figure 3 - 50% Compliance
+
+# Create a data frame with your CSV data, including descriptive names for raceth
+data3 <- data.frame(
+  raceth = c("Non-Hispanic White", "Non-Hispanic Black", "Non-Hispanic American Indian/ \n Alaskan Native", "Non-Hispanic Asian/ \n Pacific Islander", "Hispanic", "All"),
+  mortality = c(6.346276058, 12.09101109, 10.90626758, 10.85711322, 11.61287924, 8.155004327),
+  lives_saved = c(1.023162928, 1.915074185, 1.16273113, 1.67918449, 0.913859301, 1.040259094)
+)
+
+# Define a custom color palette for different raceth and Variable combinations
+custom_colors <- c("All_mortality" = "#EC7063",
+                   "All_lives_saved" = "#FADBD8",
+                   "Non-Hispanic White_mortality" = "#A569BD",
+                   "Non-Hispanic White_lives_saved" = "#E8DAEF",
+                   "Non-Hispanic Black_mortality" = "#F4D03F",
+                   "Non-Hispanic Black_lives_saved" = "#FCF3CF",
+                   "Non-Hispanic American Indian/ \n Alaskan Native_mortality" = "#58D68D",
+                   "Non-Hispanic American Indian/ \n Alaskan Native_lives_saved" = "#D5F5E3",
+                   "Non-Hispanic Asian/ \n Pacific Islander_mortality" = "#F5B041",
+                   "Non-Hispanic Asian/ \n Pacific Islander_lives_saved" = "#FDEBD0",
+                   "Hispanic_mortality" = "#5DADE2",
+                   "Hispanic_lives_saved" = "#D6EAF8")
+
+fig3 <- data3 %>%
+  # Reshape data for ggplot2
+  pivot_longer(cols = c(mortality, lives_saved), names_to = "Variable", values_to = "Value") %>%
+  # Create the plot
+  ggplot(aes(x = factor(raceth, levels = c("Non-Hispanic White", "Non-Hispanic Black", "Non-Hispanic American Indian/ \n Alaskan Native", "Non-Hispanic Asian/ \n Pacific Islander", "Hispanic", "All")), y = Value, fill = paste(raceth, Variable, sep = "_"))) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = sprintf("%.2f", Value), y = ifelse(Variable == "mortality", Value/2, (Value/2 + lag(Value)))), vjust = 1, color = "black", size = 3) + # Increase label size by 20%
+  labs(
+    y = "Gastric Cancer Mortality Rate per 100,000",
+    x = "Racial/Ethnic Group",
+    fill = ""
+  ) +
+  scale_fill_manual(
+    values = custom_colors,
+    name = "Variable",
+    labels = c("Mortality per 100,000", "Reduction in Mortality")
+  ) + # Custom color codes and legend labels for Variable
+  theme_minimal(base_size = 12) + # Increase base font size by 20%
+  theme(legend.position = "none",  # Remove the legend
+        axis.text.x = element_text(size = 9)) + # Adjust the size of X-axis labels
+  ggtitle(
+    expression(italic("50% Compliance"))
+  ) +
+  theme(
+    plot.subtitle = element_text(size = 18)
+  ) +
+  guides(fill = FALSE)  # Remove the legend
+
+# Print the plot
+print(fig3)
+
+```
+
+```{r}
+# Figure 4 - 25% Compliance
+
+# Create a data frame with your CSV data, including descriptive names for raceth
+data4 <- data.frame(
+  raceth = c("Non-Hispanic White", "Non-Hispanic Black", "Non-Hispanic American Indian/ \n Alaskan Native", "Non-Hispanic Asian/ \n Pacific Islander", "Hispanic", "All"),
+  mortality = c(6.346276058, 12.09101109, 10.90626758, 10.85711322, 11.61287924, 8.155004327),
+  lives_saved = c(0.393107477, 0.672142814, 0.055502247, 0.485642116, 0.00, 0.243035545)
+)
+
+# Define a custom color palette for different raceth and Variable combinations
+custom_colors <- c("All_mortality" = "#EC7063",
+                   "All_lives_saved" = "#FADBD8",
+                   "Non-Hispanic White_mortality" = "#A569BD",
+                   "Non-Hispanic White_lives_saved" = "#E8DAEF",
+                   "Non-Hispanic Black_mortality" = "#F4D03F",
+                   "Non-Hispanic Black_lives_saved" = "#FCF3CF",
+                   "Non-Hispanic American Indian/ \n Alaskan Native_mortality" = "#58D68D",
+                   "Non-Hispanic American Indian/ \n Alaskan Native_lives_saved" = "#D5F5E3",
+                   "Non-Hispanic Asian/ \n Pacific Islander_mortality" = "#F5B041",
+                   "Non-Hispanic Asian/ \n Pacific Islander_lives_saved" = "#FDEBD0",
+                   "Hispanic_mortality" = "#5DADE2",
+                   "Hispanic_lives_saved" = "#D6EAF8")
+
+fig4 <- data4 %>%
+  # Reshape data for ggplot2
+  pivot_longer(cols = c(mortality, lives_saved), names_to = "Variable", values_to = "Value") %>%
+  # Create the plot
+  ggplot(aes(x = factor(raceth, levels = c("Non-Hispanic White", "Non-Hispanic Black", "Non-Hispanic American Indian/ \n Alaskan Native", "Non-Hispanic Asian/ \n Pacific Islander", "Hispanic", "All")), y = Value, fill = paste(raceth, Variable, sep = "_"))) +
+  geom_bar(stat = "identity", position = "stack") +
+  geom_text(aes(label = sprintf("%.2f", Value), y = ifelse(Variable == "mortality", Value/2, (Value/2 + lag(Value)))), vjust = 1, color = "black", size = 3) + # Increase label size by 20%
+  labs(
+    y = "Gastric Cancer Mortality Rate per 100,000",
+    x = "Racial/Ethnic Group",
+    fill = ""
+  ) +
+  scale_fill_manual(
+    values = custom_colors,
+    name = "Variable",
+    labels = c("Mortality per 100,000", "Reduction in Mortality")
+  ) + # Custom color codes and legend labels for Variable
+  theme_minimal(base_size = 12) + # Increase base font size by 20%
+  theme(legend.position = "none",  # Remove the legend
+        axis.text.x = element_text(size = 9)) + # Adjust the size of X-axis labels
+  ggtitle(
+    expression(italic("25% Compliance"))
+  ) +
+  theme(
+    plot.subtitle = element_text(size = 18)
+  ) +
+  guides(fill = FALSE)  # Remove the legend
+
+# Print the plot
+print(fig4)
+
+
+```
+
+```{r}
+
+# Facet graphs
+
+library(cowplot)
+
+# Combine fig1 and fig2 side by side
+combined_plot <- plot_grid(fig1, fig2, fig3, fig4, labels = c("A", "B", "C", "D"), ncol = 2)
+
+# Print the combined plot
+print(combined_plot)
+
+# Add a main title with italics
+combined_plot <- combined_plot +
+  labs(
+    title = expression(
+      paste("Figure 1. Projected Gastric Cancer Mortality and Reduction in 2030-2034 by Implementing Endoscopy and", italic(" Helicobacter pylori "), "Eradication Therapy among those  >=50 years old.")
+    )
+  ) +
+  theme(plot.title = element_text(size = 19, face = "bold"))
+
+# Print the plot with the main title
+print(combined_plot)
+
+
+```
+
+
+```{r}
+# Proportions
+proportions <- data1 %>%
+  mutate(perc = (lives_saved/(mortality + lives_saved))*100)
+proportions_50 <- data3 %>%
+  mutate(perc = (lives_saved/(mortality + lives_saved))*100)
+
+```
