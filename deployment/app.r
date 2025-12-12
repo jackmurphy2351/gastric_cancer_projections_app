@@ -427,7 +427,7 @@ server <- function(input, output, session) {
       }
 
       incProgress(0.3, detail = "Running calculations...")
-getwd()
+
       # Run the calculation
       tryCatch({
         calc_results <- calculate_gastric_mortality_reduction(
