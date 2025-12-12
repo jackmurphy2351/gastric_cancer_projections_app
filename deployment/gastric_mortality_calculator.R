@@ -50,7 +50,7 @@ calculate_gastric_mortality_reduction <- function(
     racial_ethnic_groups = NULL,
     age_groups = NULL,
     chi_hp = NULL,                    # User-defined: Compliance with H. pylori treatment (Cell AF4)
-    chi_screen = NULL,                # User-defined: Compliance with screening (Cell AG4)
+    chi_screen = 0.9,                # User-defined: Compliance with screening (Cell AG4)
     p_hp_effectiveness = 0.9,         # User-defined: Effectiveness of H. pylori therapy (Cell AI4)
     r_screen0 = 0.6,                  # Default: relative risk with full screening compliance
     r_hp0 = 0.667                     # Default: relative risk with full H. pylori compliance
@@ -194,10 +194,10 @@ calculate_gastric_mortality_reduction <- function(
       # Calculate the effect on non-IM-attributable gastric cancer
       # This is the second part: (1 - γ) × p_hp_effectiveness × r_hp
       # Note: p_hp_effectiveness represents (p_Hp+|IM-) in the equation
-      # non_im_attributable_effect = (1 - gamma) * p_hp_effectiveness * r_hp,
+      non_im_attributable_effect = (1 - gamma) * p_hp_effectiveness * r_hp,
 
       # Total effect combining both IM and non-IM pathways
-      total_intervention_effect = im_attributable_effect, # + non_im_attributable_effect,
+      total_intervention_effect = im_attributable_effect + non_im_attributable_effect,
 
       # Calculate mortality with interventions
       # The baseline mortality is multiplied by the intervention effect
