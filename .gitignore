@@ -13,10 +13,15 @@
 rsconnect/
 shinyapps/
 
-# Data files (if sensitive - adjust as needed)
-# *.csv
-# *.xlsx
-# *.rds
+# Ignore the raw data archive
+raw_data_archive/
+
+# Ignore large data files in the root (just in case)
+*.csv
+*.xlsx
+
+# BUT! Do not ignore the one specific file we need for the app
+!deployment/data/gastric_cancer_parameters.csv
 
 # OS-specific
 .DS_Store
